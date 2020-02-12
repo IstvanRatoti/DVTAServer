@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.271
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DVTA CTF Server", "DVTA CTF Server\DVTA CTF Server.csproj", "{A8D5518D-3AE7-4CAD-80CE-0ACF81367314}"
+	ProjectSection(ProjectDependencies) = postProject
+		{427359AA-A146-475E-9B20-265897AA2442} = {427359AA-A146-475E-9B20-265897AA2442}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerDataHandling", "DBAccess\ServerDataHandling.csproj", "{427359AA-A146-475E-9B20-265897AA2442}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A8D5518D-3AE7-4CAD-80CE-0ACF81367314}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8D5518D-3AE7-4CAD-80CE-0ACF81367314}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8D5518D-3AE7-4CAD-80CE-0ACF81367314}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8D5518D-3AE7-4CAD-80CE-0ACF81367314}.Release|Any CPU.Build.0 = Release|Any CPU
+		{427359AA-A146-475E-9B20-265897AA2442}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{427359AA-A146-475E-9B20-265897AA2442}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{427359AA-A146-475E-9B20-265897AA2442}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{427359AA-A146-475E-9B20-265897AA2442}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {15A746AC-40F5-46C7-8BC9-27DF7C417D07}
+	EndGlobalSection
+EndGlobal
