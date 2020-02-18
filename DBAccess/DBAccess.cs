@@ -89,11 +89,13 @@ namespace ServerDataHandling
         public SqlCommand checkLogin(String clientusername,String clientpassword)
         {
             // Will need to fortify this query against sql injections.
-            String sqlcmd = "SELECT * FROM users where username='" + clientusername + "' and password='" + clientpassword + "'";
+            String sqlcmd = "SELECT * FROM users where username = @clientusername and password = @clientpassword";
             //String sqlcmd = "SELECT * FROM users";
             Console.WriteLine(sqlcmd);
            
             SqlCommand cmd = new SqlCommand(sqlcmd, conn);
+            cmd.Parameters.AddWithValue("@clientusername", clientusername);
+            cmd.Parameters.AddWithValue("@clientpassword", clientpassword);
             //SqlDataReader data = cmd.ExecuteReader();
             /*
             SqlDataAdapter sda = new SqlDataAdapter(cmd);
@@ -115,8 +117,12 @@ namespace ServerDataHandling
             int isadmin = 0;
 
             // This query needs to be vulnerable to a blind sql injection. Or not? I could have just one way to admin...PTH seems like a clever idea.
-            string sqlquery = "insert into users values('" + clientusername + "','" + Crypto.HashPassword(clientpassword) + "','" + clientemailid + "','" + isadmin + "')";
+            string sqlquery = "insert into users values(@clientusername, @hash, @clientemailid, @isadmin)";
             SqlCommand cmd = new SqlCommand(sqlquery, conn);
+            cmd.Parameters.AddWithValue("@clientusername", clientusername);
+            cmd.Parameters.AddWithValue("@hash", Crypto.HashPassword(clientpassword));
+            cmd.Parameters.AddWithValue("@clientemailid", clientemailid);
+            cmd.Parameters.AddWithValue("@isadmin", isadmin);
 
             try
             {
@@ -138,8 +144,9 @@ namespace ServerDataHandling
             xmldoc.LoadXml(xmlString);
 
             // Clear data already present in the sql database. Is it actually needed? Also, need to protect this against sql injection.
-            string sqlquery = "delete from dbo.expenses where username='" + username + "'";
+            string sqlquery = "delete from dbo.expenses where username = @username";
             SqlCommand cmd = new SqlCommand(sqlquery, conn);
+            cmd.Parameters.AddWithValue("@username", username);
 
             try
             {
@@ -167,8 +174,13 @@ namespace ServerDataHandling
         public bool AddExpense(String adduser, String additem, String addprice, String addDate, String addTime)
         {
             bool output = false;
-            string sqlquery = "insert into expenses values('" + adduser + "','" + additem + "','" + addprice + "','" + addDate + "','" + addTime + "')";
+            string sqlquery = "insert into expenses values(@adduser, @additem, @addprice, @addDate, @addTime)";
             SqlCommand cmd = new SqlCommand(sqlquery, conn);
+            cmd.Parameters.AddWithValue("@adduser", adduser);
+            cmd.Parameters.AddWithValue("@additem", additem);
+            cmd.Parameters.AddWithValue("@additem", additem);
+            cmd.Parameters.AddWithValue("@additem", additem);
+            cmd.Parameters.AddWithValue("@additem", additem);
 
             try
             {
@@ -189,7 +201,9 @@ namespace ServerDataHandling
             StringWriter xmlTxtWriter = new StringWriter();
             string xmlDoc;
 
-            SqlCommand objCommand = new SqlCommand("select name, price, date, time from expenses where username='" + username + "'", conn);
+            string command = "select name, price, date, time from expenses where username = @username";
+            SqlCommand objCommand = new SqlCommand(command, conn);
+            objCommand.Parameters.AddWithValue("@username", username);
 
             // Read the data, then do some magic to convert it to an xml string.
             SqlDataReader rdr = objCommand.ExecuteReader();
@@ -219,7 +233,8 @@ namespace ServerDataHandling
             DataTable objData = new DataTable("user");
             StringWriter xmlTxtWriter = new StringWriter();
 
-            SqlCommand objCommand = new SqlCommand("select id, username, password, isadmin from users", conn);
+            string command = "select id, username, password, isadmin from users";
+            SqlCommand objCommand = new SqlCommand(command, conn);
 
             // TODO modify this to make it look like the example one.
             // Read the data, then do some magic to convert it to an xml string.
@@ -250,8 +265,9 @@ namespace ServerDataHandling
         public bool ClearExpenses(String emailid)
         {
             bool output = false;
-            String sqlcmd = "DELETE FROM expenses where email='" + emailid + "'";
+            String sqlcmd = "DELETE FROM expenses where email= @emailid ";
             SqlCommand cmd = new SqlCommand(sqlcmd, conn);
+            cmd.Parameters.AddWithValue("@emailid", emailid);
 
             try
             {
@@ -269,10 +285,11 @@ namespace ServerDataHandling
         public string ViewProfile(string clientusername)
         {
             string email;
-            String sqlcmd = "SELECT email FROM users where username='" + clientusername + "'";
+            String sqlcmd = "SELECT email FROM users where username = @clientusername";
             Console.WriteLine(sqlcmd);
 
             SqlCommand cmd = new SqlCommand(sqlcmd, conn);
+            cmd.Parameters.AddWithValue("@clientusername", clientusername);
 
             try
             {
