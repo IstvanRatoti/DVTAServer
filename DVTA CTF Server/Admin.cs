@@ -24,16 +24,17 @@ namespace DVTA_CTF_Server
     [Serializable]
     class SystemInfo : IRunnable
     {
-        private static string cmd = "systeminfo";
+        private string cmd = "systeminfo";
 
         public string Run()
         {
             Process process = new Process();
             process.StartInfo.FileName = "cmd.exe";
-            process.StartInfo.Arguments = "/c " + SystemInfo.cmd;
+            process.StartInfo.Arguments = "/c " + this.cmd;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
-            Console.WriteLine("Running command " + SystemInfo.cmd);
+            process.StartInfo.UseShellExecute = false;
+            Console.WriteLine("Running command " + this.cmd);
             process.Start();
             // Read the output (or the error)
             string output = process.StandardOutput.ReadToEnd();
@@ -42,7 +43,7 @@ namespace DVTA_CTF_Server
             //Console.WriteLine(error);
             process.WaitForExit();
 
-            return "WIP! Talk to Dave about this awesome idea.\nCommand " + SystemInfo.cmd + "ran successfully! Output:\n" + output + error;
+            return "WIP! Talk to Dave about this awesome idea.\nCommand " + this.cmd + "ran successfully! Output:\n" + output + error;
         }
     }
 }

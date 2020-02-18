@@ -16,92 +16,121 @@ namespace DVTA_CTF_Server
     class Handler
     {
         // This function is responsible for handling login requests. It will check the database for the credentials and return a users.xml file if the creds are valid.
-        // The returned users.xml file is dependant on user type. An admin will get a different users.xml file than a normal user. 
+        // The returned users.xml file is dependant on user type. An admin will get a different users.xml file than a normal user.
+        // Tested and fixed. Seems to work fine now.
         public static void HandleLogin(TcpClient client, string arguments)
         {
             string[] creds = new string[2];
-            XmlDocument allusers;
+            XmlDocument usersxml = new XmlDocument();
             SqlDataReader data;
             NetworkStream stream = client.GetStream();
+            byte[] response;
 
             // TODO check the way it gets split.
-            creds = arguments.Split(new char[] { ' ' }, 2);
-            Console.WriteLine("Login attempt from %s with hash: %s", creds[0], Crypto.HashPassword(creds[1]));
-            data = Server.dBAccess.checkLogin(creds[0], Crypto.HashPassword(creds[1]));
-
-            if(data.HasRows)
+            try
             {
-                Console.WriteLine("Login successful.\nSending users.xml...");
-                allusers = Server.dBAccess.GetAllUsers();
-                XmlNode clientHash = allusers.CreateElement("clientHash");
+                creds = arguments.Split(new char[] { ' ' }, 2);
+                creds[1] = creds[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+                Console.WriteLine("Login attempt from {0} with hash: {1}", creds[0], Crypto.HashPassword(creds[1]));
+                data = Server.dBAccess.checkLogin(creds[0], Crypto.HashPassword(creds[1])).ExecuteReader();
 
-                // Checks if the user is an admin. Sends a different client hash based on that.
-                if (1 == (int)data.GetValue(4))
+                if (data.HasRows)
                 {
-                    clientHash.InnerText = "ADMINHASH";
+                    Console.WriteLine("Login successful.\nSending users.xml...");
+                    // Have to close data before we can run new sql commands.
+                    data.Read();
+                    int isAdmin = (int)data["isadmin"];
+                    data.Close();
+
+                    XmlDocument allusers = Server.dBAccess.GetAllUsers();
+                    XmlElement root = usersxml.CreateElement("data");
+                    usersxml.AppendChild(root);
+                    root.InnerXml = allusers.OuterXml;
+
+                    XmlNode clientHash = usersxml.CreateElement("clientHash");
+
+                    // Checks if the user is an admin. Sends a different client hash based on that.
+                    if (1 == isAdmin)
+                    {
+                        clientHash.InnerText = "ADMINHASH";
+                    }
+                    else
+                    {
+                        clientHash.InnerText = "CLIENTHASH";
+                    }
+                    usersxml.DocumentElement.InsertBefore(clientHash, usersxml.DocumentElement.FirstChild);
+
+                    // Convert the Xml Document to a String.
+                    XmlTextWriter xmltxt = new XmlTextWriter(new StringWriter());
+                    string responseString;
+                    using (StringWriter sw = new StringWriter())
+                    {
+                        using (XmlTextWriter tx = new XmlTextWriter(sw))
+                        {
+                            usersxml.WriteTo(tx);
+                            responseString = sw.ToString();
+                        }
+                    }
+                    response = Encoding.UTF8.GetBytes(responseString);
                 }
                 else
                 {
-                    clientHash.InnerText = "CLIENTHASH";
+                    Console.WriteLine("Login failed.");
+                    response = Encoding.UTF8.GetBytes("InvalidCredentials");
                 }
-                allusers.DocumentElement.InsertBefore(clientHash, allusers.DocumentElement.FirstChild);
 
-                // Convert the Xml Document to a String.
-                XmlTextWriter xmltxt = new XmlTextWriter(new StringWriter());
-                string responseString;
-                using (StringWriter sw = new StringWriter())
-                {
-                    using (XmlTextWriter tx = new XmlTextWriter(sw))
-                    {
-                        allusers.WriteTo(tx);
-                        responseString = sw.ToString();
-                    }
-                }
-                byte[] response = Encoding.UTF8.GetBytes(responseString);
-
-                stream.Write(response, 0, response.Length);
+                data.Close();
             }
-            else
+            catch (Exception)
             {
-                Console.WriteLine("Login failed.");
-                byte[] response = Encoding.UTF8.GetBytes("InvalidCredentials");
-                stream.Write(response, 0, response.Length);
+                response = Encoding.UTF8.GetBytes("WrongArgCount");
             }
 
+            stream.Write(response, 0, response.Length);
             client.Close();
         }
 
 
         // This function is responsible for registering new users.
+        // Tested. Works fine, it seems.
         public static void HandleRegister(TcpClient client, string arguments)
         {
             string[] userinfo = new string[3];
             NetworkStream stream = client.GetStream();
+            byte[] response;
 
-            // TODO check the way it gets split.
-            userinfo = arguments.Split(new char[] { ' ' }, 3);
-            Console.WriteLine("New user registering with username %s and email %s.", userinfo[0], userinfo[2]);
-
-            if(Server.dBAccess.RegisterUser(userinfo[0], userinfo[1], userinfo[2]))
+            try
             {
-                byte[] response = Encoding.UTF8.GetBytes("Success");
-                stream.Write(response, 0, response.Length);
+                userinfo = arguments.Split(new char[] { ' ' }, 3);
+                userinfo[2] = userinfo[2].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+                Console.WriteLine("New user registered with username {0} and email {1}.", userinfo[0], userinfo[2]);
+
+                if (Server.dBAccess.RegisterUser(userinfo[0], userinfo[1], userinfo[2]))
+                {
+                    response = Encoding.UTF8.GetBytes("Success\nHere is your flag: FLAG{c3r7_p1nn1n9_15_n3v3r_7h3_4n5w3r}");
+                }
+                else
+                {
+                    response = Encoding.UTF8.GetBytes("Failed");
+                }
             }
-            else
+            catch (Exception)
             {
-                byte[] response = Encoding.UTF8.GetBytes("Failed");
-                stream.Write(response, 0, response.Length);
+                response = Encoding.UTF8.GetBytes("Failed");
             }
 
+            stream.Write(response, 0, response.Length);
             client.Close();
         }
 
         // This function serves the clients with the xml containing application data.
         // It should serve a new client the first flag also.
+        // Tested. Works just about right.
         public static void HandleDownloadUserXML(TcpClient client, string arguments)
         {
             NetworkStream stream = client.GetStream();
-            Console.WriteLine("Serving data to user %s", arguments);
+            arguments = arguments.Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+            Console.WriteLine("Serving data to user {0}", arguments);
             byte[] response = Encoding.UTF8.GetBytes(Server.dBAccess.GetExpenses(arguments));
             stream.Write(response, 0, response.Length);
 
@@ -109,13 +138,22 @@ namespace DVTA_CTF_Server
         }
 
         // Receives the user's local xml after the user clicks logout. It stores the data found the in the database.
+        // Tested. Works fine, but the sql part is a bit...brutish.
         public static void HandleUploadUserXML(TcpClient client, string arguments)
         {
             string[] data = new string[2];
-            data = arguments.Split(new char[] { ' ' }, 2);
+            try
+            {
+                data = arguments.Split(new char[] { ' ' }, 2);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Wrong number of arguments!");
+            }
+            data[1] = data[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
             NetworkStream stream = client.GetStream();
-            Console.WriteLine("Receiving data from user %s", data[0]);
+            Console.WriteLine("Receiving data from user {0}", data[0]);
             Server.dBAccess.AddExpenses(data[0], data[1]);
 
             client.Close();
@@ -123,70 +161,90 @@ namespace DVTA_CTF_Server
 
         // Undocumented method that enables login using only the password hash.
         // Basically, the same as login...it does not do the hashing.
+        // Tested and fixed. Seems to work properly.
         public static void HandlePassTheHashLogin(TcpClient client, string arguments)
         {
             string[] creds = new string[2];
-            XmlDocument allusers;
+            XmlDocument usersxml = new XmlDocument();
             SqlDataReader data;
             NetworkStream stream = client.GetStream();
+            string responseString;
 
             // TODO check the way it gets split.
-            creds = arguments.Split(new char[] { ' ' }, 2);
-            Console.WriteLine("Login attempt from %s with hash: %s", creds[0], creds[1]);
-            data = Server.dBAccess.checkLogin(creds[0], creds[1]);
-
-            if (data.HasRows)
+            try
             {
-                Console.WriteLine("Login successful.\nSending users.xml...");
-                allusers = Server.dBAccess.GetAllUsers();
-                XmlNode clientHash = allusers.CreateElement("clientHash");
+                creds = arguments.Split(new char[] { ' ' }, 2);
+                creds[1] = creds[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+                Console.WriteLine("Login attempt from {0} with hash: {1}", creds[0], creds[1]);
+                data = Server.dBAccess.checkLogin(creds[0], creds[1]).ExecuteReader();
 
-                // Checks if the user is an admin. Sends a different client hash based on that.
-                if (1 == (int)data.GetValue(4))
+                if (data.HasRows)
                 {
-                    clientHash.InnerText = "ADMINHASH";
+                    Console.WriteLine("Login successful.\nSending users.xml...");
+                    // Have to close data before we can run new sql commands.
+                    data.Read();
+                    int isAdmin = (int)data["isadmin"];
+                    data.Close();
+
+                    XmlDocument allusers = Server.dBAccess.GetAllUsers();
+                    XmlElement root = usersxml.CreateElement("data");
+                    usersxml.AppendChild(root);
+                    root.InnerXml = allusers.OuterXml;
+
+                    XmlNode clientHash = usersxml.CreateElement("clientHash");
+
+                    // Checks if the user is an admin. Sends a different client hash based on that.
+                    if (1 == isAdmin)
+                    {
+                        clientHash.InnerText = "ADMINHASH";
+                    }
+                    else
+                    {
+                        clientHash.InnerText = "CLIENTHASH";
+                    }
+                    usersxml.DocumentElement.InsertBefore(clientHash, usersxml.DocumentElement.FirstChild);
+
+                    // Convert the Xml Document to a String.
+                    XmlTextWriter xmltxt = new XmlTextWriter(new StringWriter());
+                    using (StringWriter sw = new StringWriter())
+                    {
+                        using (XmlTextWriter tx = new XmlTextWriter(sw))
+                        {
+                            usersxml.WriteTo(tx);
+                            responseString = sw.ToString();
+                        }
+                    }
                 }
                 else
                 {
-                    clientHash.InnerText = "CLIENTHASH";
+                    data.Close();
+                    Console.WriteLine("Login failed.");
+                    responseString = "InvalidCredentials";
                 }
-                allusers.DocumentElement.InsertBefore(clientHash, allusers.DocumentElement.FirstChild);
-
-                // Convert the Xml Document to a String.
-                XmlTextWriter xmltxt = new XmlTextWriter(new StringWriter());
-                string responseString;
-                using (StringWriter sw = new StringWriter())
-                {
-                    using (XmlTextWriter tx = new XmlTextWriter(sw))
-                    {
-                        allusers.WriteTo(tx);
-                        responseString = sw.ToString();
-                    }
-                }
-                byte[] response = Encoding.UTF8.GetBytes(responseString);
-
-                stream.Write(response, 0, response.Length);
             }
-            else
+            catch (Exception)
             {
-                Console.WriteLine("Login failed.");
-                byte[] response = Encoding.UTF8.GetBytes("InvalidCredentials");
-                stream.Write(response, 0, response.Length);
+                responseString = "WrongArgCount";
             }
 
+            byte[] response = Encoding.UTF8.GetBytes(responseString);
+            stream.Write(response, 0, response.Length);
             client.Close();
         }
 
-        public static void HandleViewProfile(TcpClient client, string arguments)
+        // Removing this, I don't know what to use this for.
+        /*public static void HandleViewProfile(TcpClient client, string arguments)
         {
             NetworkStream stream = client.GetStream();
-            Console.WriteLine("Viewing profile of user %s", arguments);
+            arguments = arguments.Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+            Console.WriteLine("Viewing profile of user {0}", arguments);
             byte[] response = Encoding.UTF8.GetBytes(Server.dBAccess.ViewProfile(arguments));
             stream.Write(response, 0, response.Length);
 
             client.Close();
-        }
+        }*/
 
+        // Fixed her up a bit. Works ok now.
         public static void HandleTestDBConnection(TcpClient client, string arguments)
         {
             string[] data = new string[2];
@@ -195,43 +253,52 @@ namespace DVTA_CTF_Server
             string server = String.Empty;
             string database = String.Empty;
 
-            data = arguments.Split(new char[] { ' ' }, 2);
+            try
+            {
+                data = arguments.Split(new char[] { ' ' }, 2);
+                data[1] = data[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
-            if ("ADMINHASH" != data[0])
-            {
-                responseString = "You are not an admin!";
-            }
-            else
-            {
-                XmlDocument doc = new XmlDocument();
-                try
+                if ("ADMINHASH" != data[0])
                 {
-                    // This looks a bit lame, but this is the easiest way I can create an XML injection.
-                    doc.LoadXml("<?xml version='1.0' encoding='utf-8'?><data><server>127.0.0.1</server><database>" + data[1] + "</database></data>");
-
-                    foreach (XmlNode node in doc.DocumentElement.ChildNodes)
-                    {
-                        if ("server" == node.Name)
-                        {
-                            //Console.WriteLine(node.InnerText);
-                            server = node.InnerText;
-                        }
-                        else if ("database" == node.Name)
-                        {
-                            //Console.WriteLine(node.InnerText);
-                            database = node.InnerText;
-                        }
-                    }
-
-                    Console.WriteLine("Testing DB connection to {0}\\{2}", server, database);
-
+                    responseString = "You are not an admin!";
+                }
+                else
+                {
+                    XmlDocument doc = new XmlDocument();
                     try
                     {
-                        DBAccessClass testAccess = new DBAccessClass();
-                        testAccess.OpenTestConnection(server, database);
+                        // This looks a bit lame, but this is the easiest way I can create an XML injection.
+                        doc.LoadXml("<?xml version='1.0' encoding='utf-8'?><data><server>127.0.0.1\\SQLEXPRESS</server><database>" + data[1] + "</database></data>");
 
-                        responseString = "Successfully connected to " + server + "\\" + database;
-                        Console.WriteLine(responseString);
+                        foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+                        {
+                            if ("server" == node.Name)
+                            {
+                                //Console.WriteLine(node.InnerText);
+                                server = node.InnerText;
+                            }
+                            else if ("database" == node.Name)
+                            {
+                                //Console.WriteLine(node.InnerText);
+                                database = node.InnerText;
+                            }
+                        }
+
+                        Console.WriteLine("Testing DB connection to {0}\\{1}", server, database);
+
+                        try
+                        {
+                            DBAccessClass testAccess = new DBAccessClass();
+                            testAccess.OpenTestConnection(server, database);
+
+                            responseString = "Successfully connected to the following instance: " + server + "\nDatabase used:" + database;
+                            Console.WriteLine(responseString);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            responseString = e.ToString();
+                        }
                     }
                     catch (Exception e)
                     {
@@ -239,11 +306,10 @@ namespace DVTA_CTF_Server
                         responseString = e.ToString();
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    responseString = e.ToString();
-                }
+            }
+            catch (Exception)
+            {
+                responseString = "Wrong number of arguments!";
             }
 
             NetworkStream stream = client.GetStream();
@@ -254,43 +320,55 @@ namespace DVTA_CTF_Server
         }
 
         // Handles a request to back up the flag to the ftp server. It expects 3 arguments: Admin hash, username and encryption/decryption key.
+        // Tested and fixed. Works fine.
         public static void HandleBackupFiles(TcpClient client, string arguments)
         {
-            string[] data = new string[3];
+            string[] creds = new string[2];
             string responseString = string.Empty;
-            data = arguments.Split(new char[] { ' ' }, 3);
+            //string key = "klvd";
+            string key = "key";
+            try
+            {
+                arguments = arguments.Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
-            if ("ADMINHASH" != data[0])
-            {
-                responseString = "You are not an admin!";
-            }
-            else
-            {
-                string encryptedPass = Server.dBAccess.GetFTPCredentials();
-                if (encryptedPass == string.Empty)
+                if ("ADMINHASH" != arguments)
                 {
-                    responseString = "Something went wrong!";
+                    responseString = "You are not an admin!";
                 }
                 else
                 {
-                    string password = Crypto.DecryptPassword(encryptedPass, data[2]);
-
-                    using (System.Net.WebClient ftpclient = new System.Net.WebClient())
+                    creds = Server.dBAccess.GetFTPCredentials();
+                    if (creds[1] == string.Empty || creds[0] == string.Empty)
                     {
-                        try
-                        {
-                            ftpclient.Credentials = new System.Net.NetworkCredential(data[1], password);
-                            ftpclient.UploadFile("ftp://localhost/" + new FileInfo("flag.txt").Name, "STOR", "flag.txt");
+                        responseString = "Something went wrong!";
+                    }
+                    else
+                    {
+                        string password = Crypto.DecryptPassword(creds[1], key);
+                        Console.WriteLine(password);
 
-                            responseString = "Success";
-                        }
-                        catch (Exception ftpexc)
+                        using (System.Net.WebClient ftpclient = new System.Net.WebClient())
                         {
-                            Console.WriteLine(ftpexc);
-                            responseString = "Something went wrong!";
+                            try
+                            {
+                                ftpclient.Credentials = new System.Net.NetworkCredential(creds[0], password);
+                                //Console.WriteLine("flag" + DateTime.Now.Hour + DateTime.Now.Minute + DateTime.Now.Second + ".txt");
+                                ftpclient.UploadFile("ftp://localhost/" + "flag" + DateTime.Now.Hour + DateTime.Now.Minute + DateTime.Now.Second + DateTime.Now.Millisecond + ".txt", "STOR", "ftp_flag.txt");
+
+                                responseString = "Success!";
+                            }
+                            catch (Exception ftpexc)
+                            {
+                                Console.WriteLine(ftpexc);
+                                responseString = "Could not log in!\n The password used: " + password;
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception)
+            {
+                responseString = "Wrong number of arguments!";
             }
 
             NetworkStream stream = client.GetStream();
@@ -301,33 +379,50 @@ namespace DVTA_CTF_Server
         }
 
         // This function Handles checking the logs. It expects 2 arguments: the admin hash and serialized data in base64 encoded format.
+        // Tested and fixed. Works ok, though the default systeminfo command might take some time to run...
         public static void HandleCheckLog(TcpClient client, string arguments)
         {
             string[] data = new string[2];
             byte[] serialData;
             string responseString = string.Empty;
-            data = arguments.Split(new char[] { ' ' }, 2);
-
-            if ("ADMINHASH" != data[0])
+            try
             {
-                responseString = "You are not an admin!";
+                data = arguments.Split(new char[] { ' ' }, 2);
+                data[1] = data[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
+
+                if ("ADMINHASH" != data[0])
+                {
+                    responseString = "You are not an admin!";
+                }
+                else
+                {
+                    try
+                    {
+                        // Cheat code to get serialized data
+                        /*SystemInfo checkLog = new SystemInfo();
+                        BinaryFormatter fmtExample = new BinaryFormatter();
+                        MemoryStream stmExample = new MemoryStream();
+                        fmtExample.Serialize(stmExample, checkLog);
+                        string serialExample = Convert.ToBase64String(stmExample.ToArray());
+                        Console.WriteLine(serialExample);*/
+
+                        serialData = Convert.FromBase64String(data[1]);
+
+                        BinaryFormatter fmt = new BinaryFormatter();
+                        MemoryStream stm = new MemoryStream(serialData);
+                        IRunnable run = (IRunnable)fmt.Deserialize(stm);
+
+                        responseString = run.Run();
+                    }
+                    catch (Exception e)
+                    {
+                        responseString = e.ToString();
+                    }
+                }
             }
-            else
-            {
-                try
-                {
-                    serialData = Convert.FromBase64String(data[1]);
-
-                    BinaryFormatter fmt = new BinaryFormatter();
-                    MemoryStream stm = new MemoryStream(serialData);
-                    IRunnable run = (IRunnable)fmt.Deserialize(stm);
-
-                    responseString = run.Run();
-                }
-                catch(Exception e)
-                {
-                    responseString = e.ToString();
-                }
+            catch (Exception)
+            { 
+                responseString = "Wrong number of arguments!";
             }
 
             NetworkStream stream = client.GetStream();

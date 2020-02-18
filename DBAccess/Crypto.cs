@@ -12,6 +12,8 @@ namespace ServerDataHandling
         // Creates a sha1 hash for a given password.
         public static string HashPassword(string password)
         {
+            Console.WriteLine(password.Length);
+
             using (System.Security.Cryptography.SHA1Managed sha1 = new System.Security.Cryptography.SHA1Managed())
             {
                 var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(password));
@@ -28,13 +30,15 @@ namespace ServerDataHandling
         }
 
         // Basic repeating key XOR to decrypt the ftp password.
-        public static string DecryptPassword(string encryptedPassword, string key)
+        public static string DecryptPassword(string encryptedPasswordB64, string key)
         {
             string password = string.Empty;
+            byte[] encryptedPassword = Convert.FromBase64String(encryptedPasswordB64);
+            char[] keyBytes = key.ToCharArray();
 
             for (int i=0;i<encryptedPassword.Length;i++)
             {
-                password += encryptedPassword[i] ^ key[i%key.Length];
+                password += (char)(encryptedPassword[i] ^ keyBytes[i % keyBytes.Length]);
             }
 
             return password;

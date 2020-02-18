@@ -51,9 +51,10 @@ namespace ServerDataHandling
             String dbserver = System.Configuration.ConfigurationManager.AppSettings["DBSERVER"].ToString();
             String dbname = System.Configuration.ConfigurationManager.AppSettings["DBNAME"].ToString();
             String dbusername = System.Configuration.ConfigurationManager.AppSettings["DBUSERNAME"].ToString();
-            
-            String dbpassword = decryptPassword();
-            
+
+            //String dbpassword = decryptPassword();
+            string dbpassword = "test";
+
             Console.WriteLine("Decrypted dbpasword: "+dbpassword);
 
             String connectionString = "Data Source = "+dbserver+"; Initial Catalog="+dbname+"; User Id="+dbusername+"; Password="+dbpassword+";Integrated Security=false";
@@ -70,11 +71,12 @@ namespace ServerDataHandling
         {
             String dbusername = System.Configuration.ConfigurationManager.AppSettings["DBUSERNAME"].ToString();
 
-            String dbpassword = decryptPassword();
+            //String dbpassword = decryptPassword();
+            string dbpassword = "test";
 
             Console.WriteLine("Decrypted dbpasword: " + dbpassword);
 
-            String connectionString = "Data Source = " + server + "; Initial Catalog=" + database + "; User Id=" + dbusername + "; Password=" + dbpassword + ";Integrated Security=false";
+            String connectionString = "Data Source = " + server + "; Initial Catalog=" + database + "; User Id=" + dbusername + "; Password=" + dbpassword + ";Integrated Security=false;MultipleActiveResultSets=True;";
 
             Console.WriteLine(connectionString);
 
@@ -84,15 +86,15 @@ namespace ServerDataHandling
         }
 
         // user login
-        public SqlDataReader checkLogin(String clientusername,String clientpassword)
+        public SqlCommand checkLogin(String clientusername,String clientpassword)
         {
             // Will need to fortify this query against sql injections.
             String sqlcmd = "SELECT * FROM users where username='" + clientusername + "' and password='" + clientpassword + "'";
+            //String sqlcmd = "SELECT * FROM users";
             Console.WriteLine(sqlcmd);
            
-           
             SqlCommand cmd = new SqlCommand(sqlcmd, conn);
-           
+            //SqlDataReader data = cmd.ExecuteReader();
             /*
             SqlDataAdapter sda = new SqlDataAdapter(cmd);
             DataTable dt = new DataTable();
@@ -103,9 +105,7 @@ namespace ServerDataHandling
             return numrowsreturned;
             */
 
-            SqlDataReader dtr = cmd.ExecuteReader();
-
-            return dtr;
+            return cmd;
         }
 
         // User Registration
@@ -138,7 +138,7 @@ namespace ServerDataHandling
             xmldoc.LoadXml(xmlString);
 
             // Clear data already present in the sql database. Is it actually needed? Also, need to protect this against sql injection.
-            string sqlquery = "delete * from expenses where username='" + username + "'";
+            string sqlquery = "delete from dbo.expenses where username='" + username + "'";
             SqlCommand cmd = new SqlCommand(sqlquery, conn);
 
             try
@@ -153,7 +153,7 @@ namespace ServerDataHandling
             // iterate through each item and call addExpense to put them into the database.
             foreach(XmlNode node in xmldoc.DocumentElement.ChildNodes)
             {
-                if(AddExpense(node.ChildNodes[0].InnerText, node.ChildNodes[1].InnerText, node.ChildNodes[2].InnerText, node.ChildNodes[3].InnerText, node.ChildNodes[4].InnerText))
+                if(AddExpense(username, node.ChildNodes[0].InnerText, node.ChildNodes[1].InnerText, node.ChildNodes[2].InnerText, node.ChildNodes[3].InnerText))
                 {
                     continue;
                 }
@@ -185,10 +185,11 @@ namespace ServerDataHandling
 
         public string GetExpenses(String username)
         {
-            DataTable objData = new DataTable();
-            XmlTextWriter xmlTxtWriter = new XmlTextWriter(new StringWriter());
+            DataTable objData = new DataTable("item");
+            StringWriter xmlTxtWriter = new StringWriter();
+            string xmlDoc;
 
-            SqlCommand objCommand = new SqlCommand("select item, price, date, time from expenses where username='"+username+"'", conn);
+            SqlCommand objCommand = new SqlCommand("select name, price, date, time from expenses where username='" + username + "'", conn);
 
             // Read the data, then do some magic to convert it to an xml string.
             SqlDataReader rdr = objCommand.ExecuteReader();
@@ -197,29 +198,52 @@ namespace ServerDataHandling
                 // Return existing user data.
                 objData.Load(rdr);
                 objData.WriteXml(xmlTxtWriter);
-                return xmlTxtWriter.ToString();
+                xmlDoc = xmlTxtWriter.ToString();
+
+                rdr.Close();
+
+                return xmlDoc;
             }
             else
             {
-                // Return flag if user did not exist.
-                return "<data><item><name>FLAG</name><price>1</price><date>1970-01-01</date><time>15:30</time></item></data>";
+                // Return not found (lazy solution...).
+                rdr.Close();
+                return "<data><item><name>NOT FOUND</name><price>1</price><date>1970-01-01</date><time>15:30</time></item></data>";
             }
         }
         
         public XmlDocument GetAllUsers()
         {
+            XmlDocument allusersOrig = new XmlDocument();
             XmlDocument allusers = new XmlDocument();
-            DataTable objData = new DataTable();
-            XmlTextWriter xmlTxtWriter = new XmlTextWriter(new StringWriter());
+            DataTable objData = new DataTable("user");
+            StringWriter xmlTxtWriter = new StringWriter();
 
             SqlCommand objCommand = new SqlCommand("select id, username, password, isadmin from users", conn);
 
+            // TODO modify this to make it look like the example one.
             // Read the data, then do some magic to convert it to an xml string.
             SqlDataReader rdr = objCommand.ExecuteReader();
             objData.Load(rdr);
-            objData.WriteXml(xmlTxtWriter);
-            allusers.LoadXml(xmlTxtWriter.ToString());
 
+            /*while(rdr.Read())
+            {
+                //DataRow row = objData.NewRow();
+                //row.ItemArray = new object[rdr.FieldCount];
+                object[] row = new object[rdr.FieldCount];
+
+                rdr.GetValues(row);
+
+                objData.Rows.Add(row);
+            }*/
+            
+            objData.WriteXml(xmlTxtWriter);
+            allusersOrig.LoadXml(xmlTxtWriter.ToString());
+            XmlElement newRoot = allusers.CreateElement("users");
+            allusers.AppendChild(newRoot);
+            newRoot.InnerXml = allusersOrig.DocumentElement.InnerXml;
+
+            rdr.Close();
             return allusers;
          }
 
@@ -252,8 +276,11 @@ namespace ServerDataHandling
 
             try
             {
-                SqlDataReader dtr = cmd.ExecuteReader();
-                email = dtr.GetString(0);
+                using (SqlDataReader dtr = cmd.ExecuteReader())
+                {
+                    dtr.Read();
+                    email = (string)dtr["email"];
+                }
             }
             catch(Exception e)
             {
@@ -263,26 +290,30 @@ namespace ServerDataHandling
             return email;
         }
 
-        public string GetFTPCredentials()
+        public string[] GetFTPCredentials()
         {
-            string password = String.Empty;
+            string[] creds = new string[2];
 
-            String sqlcmd = "SELECT password FROM ftpcreds";
+            String sqlcmd = "SELECT username, password FROM ftpcreds";
             Console.WriteLine(sqlcmd);
 
             SqlCommand cmd = new SqlCommand(sqlcmd, conn);
 
             try
             {
-                SqlDataReader dtr = cmd.ExecuteReader();
-                password = dtr.GetString(0);
+                using (SqlDataReader dtr = cmd.ExecuteReader())
+                {
+                    dtr.Read();
+                    creds[1] = (string)dtr["password"];
+                    creds[0] = (string)dtr["username"];
+                }
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
             }
 
-            return password;
+            return creds;
         }
 
         //close connection

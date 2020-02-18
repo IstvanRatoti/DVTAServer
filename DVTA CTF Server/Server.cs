@@ -46,9 +46,9 @@ namespace DVTA_CTF_Server
                 case "ulxml":
                     Handler.HandleUploadUserXML(client, arguments);
                     break;
-                case "vwprf":
-                    Handler.HandleViewProfile(client, arguments);
-                    break;
+                //case "vwprf":
+                    //Handler.HandleViewProfile(client, arguments);
+                    //break;
                 // Unused command
                 case "pthlg":
                     Handler.HandlePassTheHashLogin(client, arguments);
@@ -64,7 +64,6 @@ namespace DVTA_CTF_Server
                     Handler.HandleCheckLog(client, arguments);
                     break;
                 default:
-                    // TODO Unknown Command reply, should contain pthlg!
                     Handler.HandleUnknownCommand(client, arguments);
                     break;
             }
@@ -90,7 +89,7 @@ namespace DVTA_CTF_Server
             try
             {
                 // Start the server on localhost (for now...).
-                listener = new TcpListener(IPAddress.Parse("127.0.0.1"), 1337);
+                listener = new TcpListener(IPAddress.Parse("0.0.0.0"), 1337);
                 listener.Start();
                 Console.WriteLine("DVTA Server Started...");
 
