@@ -1,0 +1,54 @@
+﻿Create tables in the database:
+
+Users:
+CREATE TABLE "users" (
+    "id" INT IDENTITY(0,1) NOT NULL,
+    "username" VARCHAR(100) NOT NULL,
+    "password" VARCHAR(100) NOT NULL,
+    "email" VARCHAR(100) NOT NULL,
+    "isadmin" INT NULL DEFAULT '0',
+    PRIMARY KEY ("id")
+)
+
+Expenses:
+CREATE TABLE "expenses" (
+    "id" INT IDENTITY(0,1) NOT NULL,
+    "username" VARCHAR(100) NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "price" VARCHAR(100) NOT NULL,
+    "date" VARCHAR(100) NOT NULL,
+    "time" VARCHAR(100) NULL DEFAULT NULL,
+    PRIMARY KEY ("id")
+)
+
+Ftpcreds:
+CREATE TABLE "ftpcreds" (
+    "id" INT IDENTITY(0,1) NOT NULL,
+    "username" VARCHAR(100) NOT NULL,
+    "password" VARCHAR(100) NOT NULL,
+    "flag" VARCHAR(100) NOT NULL,
+    PRIMARY KEY ("id")
+)
+
+
+
+Put the required data in:
+
+Users:
+INSERT INTO dbo.users (username, password, email, isadmin)
+VALUES
+('administrator','EC318CDC03760D40451AD82C6E6190EEF2506ADB','administrator@dtva.pwnd',1),
+('mike','6192E600420D330DB169894C200C3C4BCC0EBF9F','mike@dvta.pwnd',0),
+('sharon','B2E98AD6F6EB8508DD6A14CFA704BAD7F05F6FB1','FLAG{wh47_w45_my_p455w0rd_4941n?}',0);
+
+Expenses: (This query did work when I tried)
+INSERT INTO dbo.expenses (username, name, price, date, time)
+VALUES
+(mike, FLAG{wh47_15_y0ur5_15_m1n3!}, 42, 1970-01-01, 12:00),
+(sharon, shampoo, 20, 1970-01-01, 12:00),
+(sharon, Greg, 1200, 1970-01-01, 12:00);
+
+Ftpcreds:
+INSERT INTO dbo.ftpcreds (username, password, flag)
+VALUES
+(ftp, Ih0TFj49NDM5HBEtJT5ELw==, FLAG{7h3y_701d_m3_1_c0u1d_83_4ny7h1n9,_50_1_83c4m3_4n_5q1_53rv3r});

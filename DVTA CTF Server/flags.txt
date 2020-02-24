@@ -1,0 +1,27 @@
+﻿Cert pinning bypass:
+FLAG{c3r7_p1nn1n9_15_n3v3r_7h3_4n5w3r}
+Given to the user after registering successfully.
+
+Crack sharon's hash:
+FLAG{wh47_w45_my_p455w0rd_4941n?}
+Found when asking for the user's email address.
+
+Get mike's expenses:
+FLAG{wh47_15_y0ur5_15_m1n3!}
+Can be done by rewriting data in memory (or just doing the command using nc).
+
+Log in as an admin and get the admin hash:
+FLAG{c134n_up_d4v3}
+The flag is the admin hash. Need to sniff the traffic, find the debug info and use nc to log in using the password hash.
+
+Get the sql database creds:
+FLAG{7h3y_701d_m3_1_c0u1d_83_4ny7h1n9,_50_1_83c4m3_4n_5q1_53rv3r}
+Flag is in the ftpcreds table. Inject the server IP into the xml, then capture the authentication request.
+
+Get the ftp creds:
+FLAG{5h0u1d_h4v3_u53d_435}
+Flag is copied onto the ftp server. The ftp pass can be recovered by cracking the repeating key xor. The server executable should be on the ftp server too.
+
+Get shell or command execution on the machine:
+FLAG{y_50_53ri41}
+Flag is in the executable's directory. Find the serialization vulnerability and exploit it.

@@ -40,6 +40,7 @@ namespace DVTA_CTF_Server
                     // Have to close data before we can run new sql commands.
                     data.Read();
                     int isAdmin = (int)data["isadmin"];
+                    string email = (string)data["email"];
                     data.Close();
 
                     XmlDocument allusers = Server.dBAccess.GetAllUsers();
@@ -47,16 +48,20 @@ namespace DVTA_CTF_Server
                     usersxml.AppendChild(root);
                     root.InnerXml = allusers.OuterXml;
 
+                    XmlNode emailNode = usersxml.CreateElement("email");
+                    emailNode.InnerText = email;
+                    usersxml.DocumentElement.InsertBefore(emailNode, usersxml.DocumentElement.FirstChild);
+
                     XmlNode clientHash = usersxml.CreateElement("clientHash");
 
                     // Checks if the user is an admin. Sends a different client hash based on that.
                     if (1 == isAdmin)
                     {
-                        clientHash.InnerText = "ADMINHASH";
+                        clientHash.InnerText = Server.adminHash;
                     }
                     else
                     {
-                        clientHash.InnerText = "CLIENTHASH";
+                        clientHash.InnerText = Server.clientHash;
                     }
                     usersxml.DocumentElement.InsertBefore(clientHash, usersxml.DocumentElement.FirstChild);
 
@@ -184,6 +189,7 @@ namespace DVTA_CTF_Server
                     // Have to close data before we can run new sql commands.
                     data.Read();
                     int isAdmin = (int)data["isadmin"];
+                    string email = (string)data["email"];
                     data.Close();
 
                     XmlDocument allusers = Server.dBAccess.GetAllUsers();
@@ -191,16 +197,20 @@ namespace DVTA_CTF_Server
                     usersxml.AppendChild(root);
                     root.InnerXml = allusers.OuterXml;
 
+                    XmlNode emailNode = usersxml.CreateElement("email");
+                    emailNode.InnerText = email;
+                    usersxml.DocumentElement.InsertBefore(emailNode, usersxml.DocumentElement.FirstChild);
+
                     XmlNode clientHash = usersxml.CreateElement("clientHash");
 
                     // Checks if the user is an admin. Sends a different client hash based on that.
                     if (1 == isAdmin)
                     {
-                        clientHash.InnerText = "ADMINHASH";
+                        clientHash.InnerText = Server.adminHash;
                     }
                     else
                     {
-                        clientHash.InnerText = "CLIENTHASH";
+                        clientHash.InnerText = Server.clientHash;
                     }
                     usersxml.DocumentElement.InsertBefore(clientHash, usersxml.DocumentElement.FirstChild);
 
@@ -232,8 +242,8 @@ namespace DVTA_CTF_Server
             client.Close();
         }
 
-        // Removing this, I don't know what to use this for.
-        /*public static void HandleViewProfile(TcpClient client, string arguments)
+        // Serves flag for cracking the user hash.
+        public static void HandleViewProfile(TcpClient client, string arguments)
         {
             NetworkStream stream = client.GetStream();
             arguments = arguments.Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
@@ -242,7 +252,7 @@ namespace DVTA_CTF_Server
             stream.Write(response, 0, response.Length);
 
             client.Close();
-        }*/
+        }
 
         // Fixed her up a bit. Works ok now.
         public static void HandleTestDBConnection(TcpClient client, string arguments)
@@ -258,17 +268,18 @@ namespace DVTA_CTF_Server
                 data = arguments.Split(new char[] { ' ' }, 2);
                 data[1] = data[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
-                if ("ADMINHASH" != data[0])
+                if (Server.adminHash != data[0])
                 {
-                    responseString = "You are not an admin!";
+                    responseString = "Invalid ClientHash!\nYou are not an admin!";
                 }
                 else
                 {
                     XmlDocument doc = new XmlDocument();
+                    string xml = "<?xml version='1.0' encoding='utf-8'?><data><server>127.0.0.1\\SQLEXPRESS</server><database>" + data[1] + "</database></data>";
                     try
                     {
                         // This looks a bit lame, but this is the easiest way I can create an XML injection.
-                        doc.LoadXml("<?xml version='1.0' encoding='utf-8'?><data><server>127.0.0.1\\SQLEXPRESS</server><database>" + data[1] + "</database></data>");
+                        doc.LoadXml(xml);
 
                         foreach (XmlNode node in doc.DocumentElement.ChildNodes)
                         {
@@ -303,7 +314,8 @@ namespace DVTA_CTF_Server
                     catch (Exception e)
                     {
                         Console.WriteLine(e);
-                        responseString = e.ToString();
+                        responseString = "The XML file read:\n" + xml;
+                        responseString += "\nThe error:\n" + e.ToString();
                     }
                 }
             }
@@ -319,21 +331,22 @@ namespace DVTA_CTF_Server
             client.Close();
         }
 
-        // Handles a request to back up the flag to the ftp server. It expects 3 arguments: Admin hash, username and encryption/decryption key.
+        // Handles a request to back up the flag to the ftp server. It expects 1 arguments: Admin hash.
+        // Backs up the flag to the ftp server. Uses ciphertext from the sql database.
         // Tested and fixed. Works fine.
         public static void HandleBackupFiles(TcpClient client, string arguments)
         {
             string[] creds = new string[2];
             string responseString = string.Empty;
-            //string key = "klvd";
-            string key = "key";
+            string key = "klvd";
+            //string key = "key";
             try
             {
                 arguments = arguments.Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
-                if ("ADMINHASH" != arguments)
+                if (Server.adminHash != arguments)
                 {
-                    responseString = "You are not an admin!";
+                    responseString = "Invalid ClientHash!\nYou are not an admin!";
                 }
                 else
                 {
@@ -390,9 +403,9 @@ namespace DVTA_CTF_Server
                 data = arguments.Split(new char[] { ' ' }, 2);
                 data[1] = data[1].Trim('\0').Trim('\n');    // Handles the excess newline and null characters at the end of the datastream.
 
-                if ("ADMINHASH" != data[0])
+                if (Server.adminHash != data[0])
                 {
-                    responseString = "You are not an admin!";
+                    responseString = "Invalid ClientHash!\nYou are not an admin!";
                 }
                 else
                 {

@@ -1,0 +1,10 @@
+﻿Database:
+sa:79483618
+
+Users:
+administrator:TAg6J4BY
+mike:Sh2cQ2y4
+sharon:Password123
+
+FTP:
+ftp:IqerUQBWRpgINR2K

@@ -58,5 +58,10 @@
       <Name>ServerDataHandling</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="creds.txt" />
+    <Content Include="flags.txt" />
+    <Content Include="SQLQueries.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

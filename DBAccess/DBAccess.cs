@@ -53,7 +53,7 @@ namespace ServerDataHandling
             String dbusername = System.Configuration.ConfigurationManager.AppSettings["DBUSERNAME"].ToString();
 
             //String dbpassword = decryptPassword();
-            string dbpassword = "test";
+            string dbpassword = System.Configuration.ConfigurationManager.AppSettings["DBPASSWORD"].ToString();
 
             Console.WriteLine("Decrypted dbpasword: "+dbpassword);
 
@@ -72,7 +72,7 @@ namespace ServerDataHandling
             String dbusername = System.Configuration.ConfigurationManager.AppSettings["DBUSERNAME"].ToString();
 
             //String dbpassword = decryptPassword();
-            string dbpassword = "test";
+            string dbpassword = System.Configuration.ConfigurationManager.AppSettings["DBPASSWORD"].ToString();
 
             Console.WriteLine("Decrypted dbpasword: " + dbpassword);
 
@@ -178,9 +178,9 @@ namespace ServerDataHandling
             SqlCommand cmd = new SqlCommand(sqlquery, conn);
             cmd.Parameters.AddWithValue("@adduser", adduser);
             cmd.Parameters.AddWithValue("@additem", additem);
-            cmd.Parameters.AddWithValue("@additem", additem);
-            cmd.Parameters.AddWithValue("@additem", additem);
-            cmd.Parameters.AddWithValue("@additem", additem);
+            cmd.Parameters.AddWithValue("@addprice", addprice);
+            cmd.Parameters.AddWithValue("@addDate", addDate);
+            cmd.Parameters.AddWithValue("@addTime", addTime);
 
             try
             {

@@ -13,6 +13,8 @@ namespace DVTA_CTF_Server
     class Server
     {
         public static DBAccessClass dBAccess;
+        public static string adminHash = "FLAG{c134n_up_d4v3}";
+        public static string clientHash = "6d8b1411b0d1b56a373e260675a451478867f35e5218e8d28c8156f50919629b";
 
         private static void ProcessClientRequest(object obj)
         {
@@ -46,17 +48,17 @@ namespace DVTA_CTF_Server
                 case "ulxml":
                     Handler.HandleUploadUserXML(client, arguments);
                     break;
-                //case "vwprf":
-                    //Handler.HandleViewProfile(client, arguments);
-                    //break;
+                case "vwprf":
+                    Handler.HandleViewProfile(client, arguments);
+                    break;
                 // Unused command
                 case "pthlg":
                     Handler.HandlePassTheHashLogin(client, arguments);
                     break;
+                // Admin commands
                 case "tstdb":
                     Handler.HandleTestDBConnection(client, arguments);
                     break;
-                // Receives an XOR key from the client to decrypt the ftp password and try to log in with it.
                 case "bckup":
                     Handler.HandleBackupFiles(client, arguments);
                     break;
@@ -96,7 +98,7 @@ namespace DVTA_CTF_Server
                 while(true)
                 {
                     TcpClient client = listener.AcceptTcpClient();
-                    Console.WriteLine("Accepted new connection from TODO");
+                    Console.WriteLine("Accepted new connection from a client...");  //Should probably log the IP here...too lazy to do it now.
 
                     Thread t = new Thread(ProcessClientRequest);
                     t.Start(client);
